@@ -49,7 +49,7 @@ func deploy() (err error) {
 	// 2. Alice wants to assign the administrator role to Bob;
 	// 3. Alice obtains, via an out-of-band channel, a TCert of Bob, let us call this certificate *BobCert*;
 
-	bobCert, err = bob.GetTCertificateHandlerNext()
+	bobCert, err = bob.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
 		return
@@ -82,6 +82,9 @@ func testAssetManagementChaincode() (err error) {
 	}
 
 	appLogger.Debug("Deployed!")
+
+  closeCryptoClient(alice)
+  closeCryptoClient(bob)
 
 	return
 }

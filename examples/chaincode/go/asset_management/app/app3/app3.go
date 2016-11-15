@@ -50,13 +50,13 @@ func transferOwnership() (err error) {
 	// 1. Charlie is the owner of 'Picasso';
 	// 2. Charlie wants to transfer the ownership of 'Picasso' to Dave;
 	// 3. Charlie obtains, via an out-of-band channel, a TCert of Dave, let us call this certificate *DaveCert*;
-	charlieCert, err = charlie.GetTCertificateHandlerNext()
+	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Charlie TCert [%s]", err)
 		return
 	}
 
-  daveCert, err = dave.GetTCertificateHandlerNext()
+  daveCert, err = dave.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Dave TCert [%s]", err)
 		return
@@ -133,7 +133,7 @@ func main() {
 	// Enable fabric 'confidentiality'
 	confidentiality(true)
 
-  chaincodeName = "2b2d6b91c221c837811d43dfc3f071d6ddd41fc48573135992b8f04de8ee3c96ab4d9cfa50ed2d64ed4e87b2998c9239f34d8e9132ca7fd6a9bd372e4415bed5"
+  chaincodeName = os.Args[1]
 
   // Exercise the 'asset_management' chaincode
 	if err := testAssetManagementChaincode(); err != nil {
