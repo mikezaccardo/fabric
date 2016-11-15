@@ -105,6 +105,10 @@ func initCryptoClients() error {
 	return nil
 }
 
+func closeCryptoClient(client crypto.Client) {
+  crypto.CloseClient(client)
+}
+
 func processTransaction(tx *pb.Transaction) (*pb.Response, error) {
 	return serverClient.ProcessTransaction(context.Background(), tx)
 }
