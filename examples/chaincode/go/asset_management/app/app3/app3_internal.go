@@ -43,8 +43,8 @@ var (
 	confidentialityOn bool
 
 	confidentialityLevel pb.ConfidentialityLevel
-  user                 string
 	chaincodeName        string
+  user                 string
 )
 
 func initNVP() (err error) {

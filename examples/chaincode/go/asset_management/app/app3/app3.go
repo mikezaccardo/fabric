@@ -63,7 +63,12 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
 
   appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
 
-	resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
+	if !isOwner(assetName, user) {
+    appLogger.Debugf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
+    return
+  }
+
+  resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
 	if err != nil {
 		return
 	}
@@ -72,10 +77,38 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
 	appLogger.Debug("Wait 60 seconds")
 	time.Sleep(60 * time.Second)
 
-	appLogger.Debug("Query....")
+	if isOwner(assetName, newOwner) {
+    appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+  } else {
+    appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
+  }
+
+	appLogger.Debug("------------- Done!")
+	return
+}
+
+func listOwnedAssets() {
+  ownedAssets := make([]string, 0, len(assets))
+
+  for lotNum, assetName := range assets {
+    if isOwner(assetName, user) {
+      ownedAsset := "'" + lotNum + ": " + assetName + "'"
+      ownedAssets = append(ownedAssets, ownedAsset)
+    }
+  }
+
+  appLogger.Debugf("'%s' owns the following %d assets:", user, len(ownedAssets))
+
+  for _, asset := range(ownedAssets) {
+    appLogger.Debug(asset)
+  }
+}
+
+func isOwner(assetName string, user string) (isOwner bool) {
+  appLogger.Debug("Query....")
 	queryTx, theOwnerIs, err := whoIsTheOwner(myClient, assetName)
 	if err != nil {
-		return
+		return false
 	}
 	appLogger.Debugf("Resp [%s]", theOwnerIs.String())
 	appLogger.Debug("Query....done")
@@ -86,30 +119,27 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
 		res, err = myClient.DecryptQueryResult(queryTx, theOwnerIs.Msg)
 		if err != nil {
 			appLogger.Errorf("Failed decrypting result [%s]", err)
-			return
+			return false
 		}
 	} else {
 		res = theOwnerIs.Msg
 	}
 
-	if !reflect.DeepEqual(res, certs[newOwner].GetCertificate()) {
-		appLogger.Errorf("'%s' is not the owner.", newOwner)
+	if !reflect.DeepEqual(res, certs[user].GetCertificate()) {
+		appLogger.Errorf("'%s' is not the owner.", user)
 
 		appLogger.Debugf("Query result  : [% x]", res)
-		appLogger.Debugf("%s's cert: [% x]", certs[newOwner].GetCertificate(), newOwner)
+		appLogger.Debugf("%s's cert: [% x]", certs[user].GetCertificate(), user)
 
-		return fmt.Errorf("'%s' is not the owner.", newOwner)
+		return false
 	} else {
-    appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+    return true
   }
-
-	appLogger.Debug("------------- Done!")
-	return
 }
 
 func main() {
-	user = os.Args[1]
-  chaincodeName = os.Args[2]
+  chaincodeName = os.Args[1]
+	user = os.Args[2]
 
   // Initialize a non-validating peer whose role is to submit
 	// transactions to the fabric network.
@@ -131,11 +161,10 @@ func main() {
 
     if command[0] == "transfer" {
       transferOwnership(command[1], command[2])
+    } else if command[0] == "list" {
+      listOwnedAssets()
     } else if command[0] == "exit" {
       os.Exit(0)
     }
-    //else if command[0] == "list" {
-      //listOwnedAssets()
-    //}
   }
 }
