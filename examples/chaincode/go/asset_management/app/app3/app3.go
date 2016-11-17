@@ -21,7 +21,6 @@ import (
   "fmt"
 	"os"
 	"reflect"
-	"time"
 
   "strings"
 
@@ -70,20 +69,23 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
 
   resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
 	if err != nil {
+    appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
 		return
 	}
 	appLogger.Debugf("Resp [%s]", resp.String())
 
-	appLogger.Debug("Wait 60 seconds")
-	time.Sleep(60 * time.Second)
+	// appLogger.Debug("Wait 60 seconds")
+	// time.Sleep(60 * time.Second)
 
-	if isOwner(assetName, newOwner) {
-    appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
-  } else {
-    appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
-  }
+	// if isOwner(assetName, newOwner) {
+    // appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+  // } else {
+    // appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
+  // }
 
-	appLogger.Debug("------------- Done!")
+	appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+
+  appLogger.Debug("------------- Done!")
 	return
 }
 
