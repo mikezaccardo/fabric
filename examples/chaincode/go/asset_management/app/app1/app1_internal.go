@@ -102,6 +102,12 @@ func initCryptoClients() error {
 		return err
 	}
 
+  bobCert, err = bob.GetEnrollmentCertificateHandler()
+	if err != nil {
+		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
+		return err
+	}
+
 	return nil
 }
 

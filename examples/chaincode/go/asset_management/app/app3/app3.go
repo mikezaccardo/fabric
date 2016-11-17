@@ -17,10 +17,13 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+	"bufio"
+  "fmt"
 	"os"
 	"reflect"
 	"time"
+
+  "strings"
 
 	"github.com/hyperledger/fabric/core/crypto"
 	pb "github.com/hyperledger/fabric/protos"
@@ -36,37 +39,31 @@ var (
 	peerClientConn *grpc.ClientConn
 	serverClient   pb.PeerClient
 
-	// Charlie and Dave are owners
+	// Charlie, Dave, and Edwina are owners
 	charlie     crypto.Client
 	charlieCert crypto.CertificateHandler
 
 	dave     crypto.Client
 	daveCert crypto.CertificateHandler
+
+	edwina     crypto.Client
+	edwinaCert crypto.CertificateHandler
+
+	assets map[string]string
+
+  clients map[string]crypto.Client
+  certs map[string]crypto.CertificateHandler
+
+  myClient crypto.Client
+  myCert crypto.CertificateHandler
 )
 
-func transferOwnership() (err error) {
-	appLogger.Debug("------------- Charlie wants to transfer the ownership of 'Picasso' to Dave...")
+func transferOwnership(lotNum string, newOwner string) (err error) {
+	assetName := assets[lotNum]
 
-	// 1. Charlie is the owner of 'Picasso';
-	// 2. Charlie wants to transfer the ownership of 'Picasso' to Dave;
-	// 3. Charlie obtains, via an out-of-band channel, a TCert of Dave, let us call this certificate *DaveCert*;
-	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
-	if err != nil {
-		appLogger.Errorf("Failed getting Charlie TCert [%s]", err)
-		return
-	}
+  appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
 
-  daveCert, err = dave.GetEnrollmentCertificateHandler()
-	if err != nil {
-		appLogger.Errorf("Failed getting Dave TCert [%s]", err)
-		return
-	}
-
-	// 4. Charlie constructs an execute transaction, as described in *application-ACL.md*, to invoke the *transfer*
-	// function passing as parameters *('Picasso', DER(DaveCert))*.
-	// 5. Charlie submits the transaction to the fabric network.
-
-	resp, err := transferOwnershipInternal(charlie, charlieCert, "Picasso", daveCert)
+	resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
 	if err != nil {
 		return
 	}
@@ -76,7 +73,7 @@ func transferOwnership() (err error) {
 	time.Sleep(60 * time.Second)
 
 	appLogger.Debug("Query....")
-	queryTx, theOwnerIs, err := whoIsTheOwner(charlie, "Picasso")
+	queryTx, theOwnerIs, err := whoIsTheOwner(myClient, assetName)
 	if err != nil {
 		return
 	}
@@ -86,7 +83,7 @@ func transferOwnership() (err error) {
 	var res []byte
 	if confidentialityOn {
 		// Decrypt result
-		res, err = charlie.DecryptQueryResult(queryTx, theOwnerIs.Msg)
+		res, err = myClient.DecryptQueryResult(queryTx, theOwnerIs.Msg)
 		if err != nil {
 			appLogger.Errorf("Failed decrypting result [%s]", err)
 			return
@@ -95,34 +92,26 @@ func transferOwnership() (err error) {
 		res = theOwnerIs.Msg
 	}
 
-	if !reflect.DeepEqual(res, daveCert.GetCertificate()) {
-		appLogger.Error("Dave is not the owner.")
+	if !reflect.DeepEqual(res, certs[newOwner].GetCertificate()) {
+		appLogger.Errorf("'%s' is not the owner.", newOwner)
 
 		appLogger.Debugf("Query result  : [% x]", res)
-		appLogger.Debugf("Dave's cert: [% x]", daveCert.GetCertificate())
+		appLogger.Debugf("%s's cert: [% x]", certs[newOwner].GetCertificate(), newOwner)
 
-		return fmt.Errorf("Dave is not the owner.")
-	}
+		return fmt.Errorf("'%s' is not the owner.", newOwner)
+	} else {
+    appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+  }
 
 	appLogger.Debug("------------- Done!")
 	return
 }
 
-func testAssetManagementChaincode() (err error) {
-	// Transfer
-	err = transferOwnership()
-	if err != nil {
-		appLogger.Errorf("Failed transfering ownership [%s]", err)
-		return
-	}
-
-	appLogger.Debug("Dave is the owner!")
-
-	return
-}
-
 func main() {
-	// Initialize a non-validating peer whose role is to submit
+	user = os.Args[1]
+  chaincodeName = os.Args[2]
+
+  // Initialize a non-validating peer whose role is to submit
 	// transactions to the fabric network.
 	// A 'core.yaml' file is assumed to be available in the working directory.
 	if err := initNVP(); err != nil {
@@ -133,11 +122,20 @@ func main() {
 	// Enable fabric 'confidentiality'
 	confidentiality(true)
 
-  chaincodeName = os.Args[1]
+  reader := bufio.NewReader(os.Stdin)
 
-  // Exercise the 'asset_management' chaincode
-	if err := testAssetManagementChaincode(); err != nil {
-		appLogger.Debugf("Failed testing asset management chaincode [%s]", err)
-		os.Exit(-2)
-	}
+  for {
+    fmt.Printf("%s$ ", user)
+    line, _ := reader.ReadString('\n')
+    command := strings.Split(strings.TrimRight(line, "\n"), " ")
+
+    if command[0] == "transfer" {
+      transferOwnership(command[1], command[2])
+    } else if command[0] == "exit" {
+      os.Exit(0)
+    }
+    //else if command[0] == "list" {
+      //listOwnedAssets()
+    //}
+  }
 }

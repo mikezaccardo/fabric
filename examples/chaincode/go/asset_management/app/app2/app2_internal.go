@@ -17,9 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
+
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -30,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/op/go-logging"
+  "github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -50,6 +54,11 @@ func initNVP() (err error) {
 	}
 	if err = initCryptoClients(); err != nil {
 		appLogger.Debugf("Failed deploying [%s]", err)
+		return
+	}
+
+	if err = readAssets(); err != nil {
+		appLogger.Debugf("Failed reading assets [%s]", err)
 		return
 	}
 
@@ -80,20 +89,20 @@ func initPeerClient() (err error) {
 func initCryptoClients() error {
 	crypto.Init()
 
-	// Initialize the clients mapping alice, bob, charlie and dave
+	// Initialize the clients mapping bob, charlie, dave, and edwina
 	// to identities already defined in 'membersrvc.yaml'
 
 	// Bob as lukas
 	if err := crypto.RegisterClient("lukas", nil, "lukas", "NPKYL39uKbkj"); err != nil {
 		return err
 	}
-  var err error
+	var err error
 	bob, err = crypto.InitClient("lukas", nil)
 	if err != nil {
 		return err
 	}
 
-	// Charlie
+	// Charlie as diego
 	if err := crypto.RegisterClient("diego", nil, "diego", "DRJ23pEQl16a"); err != nil {
 		return err
 	}
@@ -102,11 +111,80 @@ func initCryptoClients() error {
 		return err
 	}
 
+	// Dave as binhn
+	if err := crypto.RegisterClient("binhn", nil, "binhn", "7avZQLwcUe9q"); err != nil {
+		return err
+	}
+	dave, err = crypto.InitClient("binhn", nil)
+	if err != nil {
+		return err
+	}
+
+	// Edwina as test_user0
+	if err := crypto.RegisterClient("test_user0", nil, "test_user0", "MS9qrN8hFjlE"); err != nil {
+		return err
+	}
+	edwina, err = crypto.InitClient("test_user0", nil)
+	if err != nil {
+		return err
+	}
+
+  bobCert, err = bob.GetEnrollmentCertificateHandler()
+	if err != nil {
+		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
+		return err
+	}
+
+	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
+	if err != nil {
+		appLogger.Errorf("Failed getting Charlie TCert [%s]", err)
+		return err
+	}
+
+	daveCert, err = dave.GetEnrollmentCertificateHandler()
+	if err != nil {
+		appLogger.Errorf("Failed getting Dave TCert [%s]", err)
+		return err
+	}
+
+	edwinaCert, err = edwina.GetEnrollmentCertificateHandler()
+	if err != nil {
+		appLogger.Errorf("Failed getting Edwina TCert [%s]", err)
+		return err
+	}
+
+	return nil
+}
+
+func readAssets() error {
+	assets = make(map[string]string)
+
+	file, err := os.Open("assets.txt")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		assetLine := scanner.Text()
+		assetParts := strings.Split(assetLine, ";")
+
+		lotNum := assetParts[0]
+		assetName := assetParts[1]
+
+		assets[lotNum] = assetName
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func closeCryptoClient(client crypto.Client) {
-  crypto.CloseClient(client)
+	crypto.CloseClient(client)
 }
 
 func processTransaction(tx *pb.Transaction) (*pb.Response, error) {

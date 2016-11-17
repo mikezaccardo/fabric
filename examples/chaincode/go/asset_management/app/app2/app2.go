@@ -17,14 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"os"
-	"reflect"
 	"time"
 
 	"github.com/hyperledger/fabric/core/crypto"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/op/go-logging"
+  "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -40,87 +38,46 @@ var (
 	bob     crypto.Client
 	bobCert crypto.CertificateHandler
 
-	// Charlie and Dave are owners
+	// Charlie, Dave, and Edwina are owners
 	charlie     crypto.Client
 	charlieCert crypto.CertificateHandler
+
+	dave     crypto.Client
+	daveCert crypto.CertificateHandler
+
+	edwina     crypto.Client
+	edwinaCert crypto.CertificateHandler
+
+	assets map[string]string
 )
 
 func assignOwnership() (err error) {
-	appLogger.Debug("------------- Bob wants to assign the asset 'Picasso' to Charlie...")
+	appLogger.Debug("------------- Bob wants to assign the asset owners to all of the assets...")
 
-	// 1. Bob is the administrator of the chaincode;
-	// 2. Bob wants to assign the asset 'Picasso' to Charlie;
-	// 3. Bob obtains, via an out-of-band channel, a TCert of Charlie, let us call this certificate *CharlieCert*;
+	i := 0
+	var ownerCert crypto.CertificateHandler
 
-	bobCert, err = bob.GetEnrollmentCertificateHandler()
-	if err != nil {
-		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
-		return
-	}
-
-  // Administrator assigns ownership of Picasso to Charlie
-	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
-	if err != nil {
-		appLogger.Errorf("Failed getting Charlie TCert [%s]", err)
-		return
-	}
-
-	// 4. Bob constructs an execute transaction, as described in *application-ACL.md*, to invoke the *assign*
-	// function passing as parameters *('Picasso', DER(CharlieCert))*.
-	// 5. Bob submits the transaction to the fabric network.
-
-	if bob == nil {
-    appLogger.Error("bob is nil")
-  }
-
-  if bobCert == nil {
-    appLogger.Error("bobCert is nil")
-  }
-
-  if charlieCert == nil {
-    appLogger.Error("charlieCert is nil")
-  }
-
-  resp, err := assignOwnershipInternal(bob, bobCert, "Picasso", charlieCert)
-	if err != nil {
-		appLogger.Errorf("Failed assigning ownership [%s]", err)
-		return
-	}
-	appLogger.Debugf("Resp [%s]", resp.String())
-
-	appLogger.Debug("Wait 60 seconds")
-	time.Sleep(60 * time.Second)
-
-	// Check the owner of 'Picasso". It should be charlie
-	appLogger.Debug("Query....")
-	queryTx, theOwnerIs, err := whoIsTheOwner(bob, "Picasso")
-	if err != nil {
-		return
-	}
-	appLogger.Debugf("Resp [%s]", theOwnerIs.String())
-	appLogger.Debug("Query....done")
-
-	var res []byte
-	if confidentialityOn {
-		// Decrypt result
-		res, err = bob.DecryptQueryResult(queryTx, theOwnerIs.Msg)
-		if err != nil {
-			appLogger.Errorf("Failed decrypting result [%s]", err)
-			return
+	for lotNum, assetName := range assets {
+		if i%3 == 0 {
+      appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Charlie")
+			ownerCert = charlieCert
+		} else if i%3 == 1 {
+			appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Dave")
+      ownerCert = daveCert
+		} else {
+      appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Edwina")
+			ownerCert = edwinaCert
 		}
-	} else {
-		res = theOwnerIs.Msg
+
+		resp, err := assignOwnershipInternal(bob, bobCert, assetName, ownerCert)
+		if err != nil {
+			appLogger.Errorf("Failed assigning ownership [%s]", err)
+			return err
+		}
+		appLogger.Debugf("Resp [%s]", resp.String())
+
+		i++
 	}
-
-	if !reflect.DeepEqual(res, charlieCert.GetCertificate()) {
-		appLogger.Error("Charlie is not the owner.")
-
-		appLogger.Debugf("Query result  : [% x]", res)
-		appLogger.Debugf("Charlie's cert: [% x]", charlieCert.GetCertificate())
-
-		return fmt.Errorf("Charlie is not the owner.")
-	}
-	appLogger.Debug("Charlie is the owner!")
 
 	appLogger.Debug("Wait 60 seconds...")
 	time.Sleep(60 * time.Second)
@@ -139,8 +96,10 @@ func testAssetManagementChaincode() (err error) {
 
 	appLogger.Debug("Assigned ownership!")
 
-  closeCryptoClient(bob)
-  closeCryptoClient(charlie)
+	closeCryptoClient(bob)
+	closeCryptoClient(charlie)
+	closeCryptoClient(dave)
+	closeCryptoClient(edwina)
 
 	return
 }
@@ -159,7 +118,7 @@ func main() {
 
 	chaincodeName = os.Args[1]
 
-  // Exercise the 'asset_management' chaincode
+	// Exercise the 'asset_management' chaincode
 	if err := testAssetManagementChaincode(); err != nil {
 		appLogger.Debugf("Failed testing asset management chaincode [%s]", err)
 		os.Exit(-2)
