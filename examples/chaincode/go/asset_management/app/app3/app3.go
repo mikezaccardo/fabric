@@ -49,6 +49,7 @@ var (
 	edwinaCert crypto.CertificateHandler
 
 	assets map[string]string
+  lotNums []string
 
   clients map[string]crypto.Client
   certs map[string]crypto.CertificateHandler
@@ -92,7 +93,9 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
 func listOwnedAssets() {
   ownedAssets := make([]string, 0, len(assets))
 
-  for lotNum, assetName := range assets {
+  for _, lotNum := range lotNums {
+    assetName := assets[lotNum]
+
     if isOwner(assetName, user) {
       ownedAsset := "'" + lotNum + ": " + assetName + "'"
       ownedAssets = append(ownedAssets, ownedAsset)

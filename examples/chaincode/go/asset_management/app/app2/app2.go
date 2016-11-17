@@ -49,6 +49,7 @@ var (
 	edwinaCert crypto.CertificateHandler
 
 	assets map[string]string
+  lotNums []string
 )
 
 func assignOwnership() (err error) {
@@ -57,7 +58,9 @@ func assignOwnership() (err error) {
 	i := 0
 	var ownerCert crypto.CertificateHandler
 
-	for lotNum, assetName := range assets {
+	for _, lotNum := range(lotNums) {
+    assetName := assets[lotNum]
+
 		if i%3 == 0 {
       appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Charlie")
 			ownerCert = charlieCert
@@ -77,7 +80,7 @@ func assignOwnership() (err error) {
 		appLogger.Debugf("Resp [%s]", resp.String())
 
 		i++
-	}
+  }
 
 	appLogger.Debug("Wait 60 seconds...")
 	time.Sleep(60 * time.Second)
@@ -105,6 +108,8 @@ func testAssetManagementChaincode() (err error) {
 }
 
 func main() {
+  chaincodeName = os.Args[1]
+
 	// Initialize a non-validating peer whose role is to submit
 	// transactions to the fabric network.
 	// A 'core.yaml' file is assumed to be available in the working directory.
@@ -115,8 +120,6 @@ func main() {
 
 	// Enable fabric 'confidentiality'
 	confidentiality(true)
-
-	chaincodeName = os.Args[1]
 
 	// Exercise the 'asset_management' chaincode
 	if err := testAssetManagementChaincode(); err != nil {

@@ -150,6 +150,7 @@ func initCryptoClients() error {
 
 func readAssets() error {
 	assets = make(map[string]string)
+  lotNums = make([]string, 0, 47)
 
 	file, err := os.Open("assets.txt")
 	if err != nil {
@@ -166,6 +167,7 @@ func readAssets() error {
 		assetName := assetParts[1]
 
 		assets[lotNum] = assetName
+    lotNums = append(lotNums, lotNum)
 	}
 
 	if err := scanner.Err(); err != nil {
