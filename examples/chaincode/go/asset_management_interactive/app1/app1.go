@@ -47,7 +47,7 @@ func deploy() (err error) {
 	// Deploy:
 	// 1. Alice is the deployer of the chaincode;
 	// 2. Alice wants to assign the administrator role to Bob;
-	// 3. Alice obtains, via an out-of-band channel, a TCert of Bob, let us call this certificate *BobCert*;
+	// 3. Alice obtains, via an out-of-band channel, the ECert of Bob, let us call this certificate *BobCert*;
 	// 4. Alice constructs a deploy transaction, as described in *application-ACL.md*,  setting the transaction
 	// metadata to *DER(CharlieCert)*.
 	// 5. Alice submits th	e transaction to the fabric network.

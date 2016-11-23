@@ -18,12 +18,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/base64"
+  "encoding/base64"
 	"errors"
 	"fmt"
-	"os"
+  "os"
 
-	"strings"
+  "strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
-  "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -44,6 +44,7 @@ var (
 
 	confidentialityLevel pb.ConfidentialityLevel
 	chaincodeName        string
+  user                 string
 )
 
 func initNVP() (err error) {
@@ -57,7 +58,7 @@ func initNVP() (err error) {
 		return
 	}
 
-	if err = readAssets(); err != nil {
+  if err = readAssets(); err != nil {
 		appLogger.Debugf("Failed reading assets [%s]", err)
 		return
 	}
@@ -89,23 +90,14 @@ func initPeerClient() (err error) {
 func initCryptoClients() error {
 	crypto.Init()
 
-	// Initialize the clients mapping bob, charlie, dave, and edwina
+	// Initialize the clients mapping charlie, dave, and edwina
 	// to identities already defined in 'membersrvc.yaml'
-
-	// Bob as lukas
-	if err := crypto.RegisterClient("lukas", nil, "lukas", "NPKYL39uKbkj"); err != nil {
-		return err
-	}
-	var err error
-	bob, err = crypto.InitClient("lukas", nil)
-	if err != nil {
-		return err
-	}
 
 	// Charlie as diego
 	if err := crypto.RegisterClient("diego", nil, "diego", "DRJ23pEQl16a"); err != nil {
 		return err
 	}
+  var err error
 	charlie, err = crypto.InitClient("diego", nil)
 	if err != nil {
 		return err
@@ -129,29 +121,29 @@ func initCryptoClients() error {
 		return err
 	}
 
-  bobCert, err = bob.GetEnrollmentCertificateHandler()
+  charlieCert, err = charlie.GetEnrollmentCertificateHandler()
 	if err != nil {
-		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
-		return err
-	}
-
-	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
-	if err != nil {
-		appLogger.Errorf("Failed getting Charlie TCert [%s]", err)
+		appLogger.Errorf("Failed getting Charlie ECert [%s]", err)
 		return err
 	}
 
 	daveCert, err = dave.GetEnrollmentCertificateHandler()
 	if err != nil {
-		appLogger.Errorf("Failed getting Dave TCert [%s]", err)
+		appLogger.Errorf("Failed getting Dave ECert [%s]", err)
 		return err
 	}
 
 	edwinaCert, err = edwina.GetEnrollmentCertificateHandler()
 	if err != nil {
-		appLogger.Errorf("Failed getting Edwina TCert [%s]", err)
+		appLogger.Errorf("Failed getting Edwina ECert [%s]", err)
 		return err
 	}
+
+  clients = map[string]crypto.Client {"charlie": charlie, "dave": dave, "edwina": edwina}
+  certs = map[string]crypto.CertificateHandler {"charlie": charlieCert, "dave": daveCert, "edwina": edwinaCert}
+
+  myClient = clients[user]
+  myCert = certs[user]
 
 	return nil
 }
@@ -183,10 +175,6 @@ func readAssets() error {
 	}
 
 	return nil
-}
-
-func closeCryptoClient(client crypto.Client) {
-	crypto.CloseClient(client)
 }
 
 func processTransaction(tx *pb.Transaction) (*pb.Response, error) {

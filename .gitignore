@@ -31,3 +31,4 @@ report.xml
 .gradle
 build/
 bin/
+.vscode/
