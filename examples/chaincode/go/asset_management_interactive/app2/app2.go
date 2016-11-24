@@ -108,6 +108,11 @@ func testAssetManagementChaincode() (err error) {
 }
 
 func main() {
+  if len(os.Args) != 2 {
+    appLogger.Errorf("Error -- A ChaincodeName must be specified.")
+    os.Exit(-1)
+  }
+
   chaincodeName = os.Args[1]
 
 	// Initialize a non-validating peer whose role is to submit

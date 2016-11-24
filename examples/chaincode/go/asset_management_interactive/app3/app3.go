@@ -59,6 +59,16 @@ var (
 )
 
 func transferOwnership(lotNum string, newOwner string) (err error) {
+  if !isAssetKnown(lotNum) {
+    appLogger.Errorf("Error -- asset '%s' does not exist.", lotNum)
+    return
+  }
+
+  if !isUserKnown(newOwner) {
+    appLogger.Errorf("Error -- user '%s' is not known.", newOwner)
+    return
+  }
+
 	assetName := assets[lotNum]
 
   appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
@@ -71,21 +81,11 @@ func transferOwnership(lotNum string, newOwner string) (err error) {
   resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
 	if err != nil {
     appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
-		return
+		return err
 	}
 	appLogger.Debugf("Resp [%s]", resp.String())
 
-	// appLogger.Debug("Wait 60 seconds")
-	// time.Sleep(60 * time.Second)
-
-	// if isOwner(assetName, newOwner) {
-    // appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
-  // } else {
-    // appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
-  // }
-
 	appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
-
   appLogger.Debug("------------- Done!")
 	return
 }
@@ -142,7 +142,22 @@ func isOwner(assetName string, user string) (isOwner bool) {
   }
 }
 
+func isUserKnown(userName string) (ok bool) {
+  _, ok = clients[userName]
+  return ok
+}
+
+func isAssetKnown(assetName string) (ok bool) {
+  _, ok = assets[assetName]
+  return ok
+}
+
 func main() {
+  if len(os.Args) != 3 {
+    appLogger.Error("Error -- A ChaincodeName and username must be specified.")
+    os.Exit(-1)
+  }
+
   chaincodeName = os.Args[1]
 	user = os.Args[2]
 
@@ -153,6 +168,11 @@ func main() {
 		appLogger.Debugf("Failed initiliazing NVP [%s]", err)
 		os.Exit(-1)
 	}
+
+  if !isUserKnown(user) {
+    appLogger.Errorf("Error -- user '%s' is not known.", user)
+    os.Exit(-1)
+  }
 
 	// Enable fabric 'confidentiality'
 	confidentiality(true)
