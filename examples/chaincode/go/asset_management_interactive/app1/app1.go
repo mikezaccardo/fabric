@@ -77,8 +77,8 @@ func testAssetManagementChaincode() (err error) {
 
 	appLogger.Debug("Deployed!")
 
-  closeCryptoClient(alice)
-  closeCryptoClient(bob)
+	closeCryptoClient(alice)
+	closeCryptoClient(bob)
 
 	return
 }

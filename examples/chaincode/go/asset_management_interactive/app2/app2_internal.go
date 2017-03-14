@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
-  "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -129,7 +129,7 @@ func initCryptoClients() error {
 		return err
 	}
 
-  bobCert, err = bob.GetEnrollmentCertificateHandler()
+	bobCert, err = bob.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Bob ECert [%s]", err)
 		return err
@@ -158,7 +158,7 @@ func initCryptoClients() error {
 
 func readAssets() error {
 	assets = make(map[string]string)
-  lotNums = make([]string, 0, 47)
+	lotNums = make([]string, 0, 47)
 
 	file, err := os.Open("assets.txt")
 	if err != nil {
@@ -175,7 +175,7 @@ func readAssets() error {
 		assetName := assetParts[1]
 
 		assets[lotNum] = assetName
-    lotNums = append(lotNums, lotNum)
+		lotNums = append(lotNums, lotNum)
 	}
 
 	if err := scanner.Err(); err != nil {

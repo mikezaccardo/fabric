@@ -22,7 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/crypto"
 	pb "github.com/hyperledger/fabric/protos"
-  "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -48,8 +48,8 @@ var (
 	edwina     crypto.Client
 	edwinaCert crypto.CertificateHandler
 
-	assets map[string]string
-  lotNums []string
+	assets  map[string]string
+	lotNums []string
 )
 
 func assignOwnership() (err error) {
@@ -58,17 +58,17 @@ func assignOwnership() (err error) {
 	i := 0
 	var ownerCert crypto.CertificateHandler
 
-	for _, lotNum := range(lotNums) {
-    assetName := assets[lotNum]
+	for _, lotNum := range lotNums {
+		assetName := assets[lotNum]
 
 		if i%3 == 0 {
-      appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Charlie")
+			appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Charlie")
 			ownerCert = charlieCert
 		} else if i%3 == 1 {
 			appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Dave")
-      ownerCert = daveCert
+			ownerCert = daveCert
 		} else {
-      appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Edwina")
+			appLogger.Debugf("Assigning ownership of asset '[%s]: [%s]' to '[%s]'", lotNum, assetName, "Edwina")
 			ownerCert = edwinaCert
 		}
 
@@ -80,7 +80,7 @@ func assignOwnership() (err error) {
 		appLogger.Debugf("Resp [%s]", resp.String())
 
 		i++
-  }
+	}
 
 	appLogger.Debug("Wait 60 seconds...")
 	time.Sleep(60 * time.Second)
@@ -108,12 +108,12 @@ func testAssetManagementChaincode() (err error) {
 }
 
 func main() {
-  if len(os.Args) != 2 {
-    appLogger.Errorf("Error -- A ChaincodeName must be specified.")
-    os.Exit(-1)
-  }
+	if len(os.Args) != 2 {
+		appLogger.Errorf("Error -- A ChaincodeName must be specified.")
+		os.Exit(-1)
+	}
 
-  chaincodeName = os.Args[1]
+	chaincodeName = os.Args[1]
 
 	// Initialize a non-validating peer whose role is to submit
 	// transactions to the fabric network.

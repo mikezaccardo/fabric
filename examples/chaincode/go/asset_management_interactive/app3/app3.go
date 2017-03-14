@@ -18,12 +18,16 @@ package main
 
 import (
 	"bufio"
-  "fmt"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"reflect"
 
-  "strings"
+	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/hyperledger/fabric/core/crypto"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
@@ -48,69 +52,92 @@ var (
 	edwina     crypto.Client
 	edwinaCert crypto.CertificateHandler
 
-	assets map[string]string
-  lotNums []string
+	assets  map[string]string
+	lotNums []string
 
-  clients map[string]crypto.Client
-  certs map[string]crypto.CertificateHandler
+	clients map[string]crypto.Client
+	certs   map[string]crypto.CertificateHandler
 
-  myClient crypto.Client
-  myCert crypto.CertificateHandler
+	myClient crypto.Client
+	myCert   crypto.CertificateHandler
 )
 
-func transferOwnership(lotNum string, newOwner string) (err error) {
-  if !isAssetKnown(lotNum) {
-    appLogger.Errorf("Error -- asset '%s' does not exist.", lotNum)
-    return
-  }
+func transferOwnership(lotNum string, newOwner string) (message string, err error) {
+	if !isAssetKnown(lotNum) {
+		message = fmt.Sprintf("Error -- asset '%s' does not exist.", lotNum)
+		appLogger.Errorf("Error -- asset '%s' does not exist.", lotNum)
+		return message, nil
+	}
 
-  if !isUserKnown(newOwner) {
-    appLogger.Errorf("Error -- user '%s' is not known.", newOwner)
-    return
-  }
+	if !isUserKnown(user) {
+		message = fmt.Sprintf("Error -- user '%s' is not known.", user)
+		appLogger.Errorf("Error -- user '%s' is not known.", user)
+		return message, nil
+	}
+
+	if !isUserKnown(newOwner) {
+		message = fmt.Sprintf("Error -- user '%s' is not known.", newOwner)
+		appLogger.Errorf("Error -- user '%s' is not known.", newOwner)
+		return message, nil
+	}
 
 	assetName := assets[lotNum]
 
-  appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
+	appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
 
 	if !isOwner(assetName, user) {
-    appLogger.Debugf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
-    return
-  }
+		message = fmt.Sprintf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
+		appLogger.Debugf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
+		return message, nil
+	}
 
-  resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
+	resp, err := transferOwnershipInternal(myClient, myCert, assetName, certs[newOwner])
 	if err != nil {
-    appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
-		return err
+		message = fmt.Sprintf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
+		appLogger.Debugf("Failed to transfer '%s: %s' to '%s'", lotNum, assetName, newOwner)
+		return message, err
 	}
 	appLogger.Debugf("Resp [%s]", resp.String())
 
+	message = fmt.Sprintf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
 	appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
-  appLogger.Debug("------------- Done!")
-	return
+	appLogger.Debug("------------- Done!")
+	return message, nil
 }
 
 func listOwnedAssets() {
-  ownedAssets := make([]string, 0, len(assets))
+	ownedAssets := getOwnedAssets(user)
 
-  for _, lotNum := range lotNums {
-    assetName := assets[lotNum]
+	appLogger.Debugf("'%s' owns the following %d assets:", user, len(ownedAssets))
 
-    if isOwner(assetName, user) {
-      ownedAsset := "'" + lotNum + ": " + assetName + "'"
-      ownedAssets = append(ownedAssets, ownedAsset)
-    }
-  }
+	for _, asset := range ownedAssets {
+		appLogger.Debug(asset)
+	}
+}
 
-  appLogger.Debugf("'%s' owns the following %d assets:", user, len(ownedAssets))
+func getOwnedAssets(user string) (ownedAssets []string) {
+	if !isUserKnown(user) {
+		ownedAssets = make([]string, 0, 1)
+		ownedAssets = append(ownedAssets, "Unknown user")
+		return ownedAssets
+	}
 
-  for _, asset := range(ownedAssets) {
-    appLogger.Debug(asset)
-  }
+	ownedAssets = make([]string, 0, len(assets))
+
+	for _, lotNum := range lotNums {
+		assetName := assets[lotNum]
+
+		if isOwner(assetName, user) {
+			ownedAsset := "'" + lotNum + ": " + assetName + "'"
+			ownedAssets = append(ownedAssets, ownedAsset)
+		}
+	}
+
+	return ownedAssets
 }
 
 func isOwner(assetName string, user string) (isOwner bool) {
-  appLogger.Debug("Query....")
+	appLogger.Debug("Query....")
 	queryTx, theOwnerIs, err := whoIsTheOwner(myClient, assetName)
 	if err != nil {
 		return false
@@ -137,31 +164,64 @@ func isOwner(assetName string, user string) (isOwner bool) {
 		appLogger.Debugf("%s's cert: [% x]", certs[user].GetCertificate(), user)
 
 		return false
-	} else {
-    return true
-  }
+	}
+
+	return true
 }
 
 func isUserKnown(userName string) (ok bool) {
-  _, ok = clients[userName]
-  return ok
+	_, ok = clients[userName]
+	return ok
 }
 
 func isAssetKnown(assetName string) (ok bool) {
-  _, ok = assets[assetName]
-  return ok
+	_, ok = assets[assetName]
+	return ok
+}
+
+func serve() {
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/list/{owner}", list)
+	router.HandleFunc("/transfer", transfer)
+
+	log.Fatal(http.ListenAndServe("0.0.0.0:8080", router))
+}
+
+func list(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	owner := vars["owner"]
+
+	user = owner
+	myClient = clients[owner]
+	myCert = certs[owner]
+
+	ownedAssetsList := getOwnedAssets(owner)
+	json.NewEncoder(w).Encode(ownedAssetsList)
+}
+
+func transfer(w http.ResponseWriter, r *http.Request) {
+	asset := r.FormValue("asset")
+	owner := r.FormValue("owner")
+	recipient := r.FormValue("recipient")
+
+	user = owner
+	myClient = clients[owner]
+	myCert = certs[owner]
+
+	message, _ := transferOwnership(asset, recipient)
+	fmt.Fprintln(w, message)
 }
 
 func main() {
-  if len(os.Args) != 3 {
-    appLogger.Error("Error -- A ChaincodeName and username must be specified.")
-    os.Exit(-1)
-  }
+	if len(os.Args) != 3 {
+		appLogger.Error("Error -- A ChaincodeName and username must be specified.")
+		os.Exit(-1)
+	}
 
-  chaincodeName = os.Args[1]
+	chaincodeName = os.Args[1]
 	user = os.Args[2]
 
-  // Initialize a non-validating peer whose role is to submit
+	// Initialize a non-validating peer whose role is to submit
 	// transactions to the fabric network.
 	// A 'core.yaml' file is assumed to be available in the working directory.
 	if err := initNVP(); err != nil {
@@ -169,27 +229,32 @@ func main() {
 		os.Exit(-1)
 	}
 
-  if !isUserKnown(user) {
-    appLogger.Errorf("Error -- user '%s' is not known.", user)
-    os.Exit(-1)
-  }
-
 	// Enable fabric 'confidentiality'
 	confidentiality(true)
 
-  reader := bufio.NewReader(os.Stdin)
+	if user == "serve" {
+		serve()
+		os.Exit(0)
+	}
 
-  for {
-    fmt.Printf("%s$ ", user)
-    line, _ := reader.ReadString('\n')
-    command := strings.Split(strings.TrimRight(line, "\n"), " ")
+	if !isUserKnown(user) {
+		appLogger.Errorf("Error -- user '%s' is not known.", user)
+		os.Exit(-1)
+	}
 
-    if command[0] == "transfer" {
-      transferOwnership(command[1], command[2])
-    } else if command[0] == "list" {
-      listOwnedAssets()
-    } else if command[0] == "exit" {
-      os.Exit(0)
-    }
-  }
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s$ ", user)
+		line, _ := reader.ReadString('\n')
+		command := strings.Split(strings.TrimRight(line, "\n"), " ")
+
+		if command[0] == "transfer" {
+			transferOwnership(command[1], command[2])
+		} else if command[0] == "list" {
+			listOwnedAssets()
+		} else if command[0] == "exit" {
+			os.Exit(0)
+		}
+	}
 }

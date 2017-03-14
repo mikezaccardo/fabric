@@ -102,7 +102,7 @@ func initCryptoClients() error {
 		return err
 	}
 
-  bobCert, err = bob.GetEnrollmentCertificateHandler()
+	bobCert, err = bob.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Bob TCert [%s]", err)
 		return err
@@ -112,7 +112,7 @@ func initCryptoClients() error {
 }
 
 func closeCryptoClient(client crypto.Client) {
-  crypto.CloseClient(client)
+	crypto.CloseClient(client)
 }
 
 func processTransaction(tx *pb.Transaction) (*pb.Response, error) {

@@ -18,12 +18,12 @@ package main
 
 import (
 	"bufio"
-  "encoding/base64"
+	"encoding/base64"
 	"errors"
 	"fmt"
-  "os"
+	"os"
 
-  "strings"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -44,7 +44,7 @@ var (
 
 	confidentialityLevel pb.ConfidentialityLevel
 	chaincodeName        string
-  user                 string
+	user                 string
 )
 
 func initNVP() (err error) {
@@ -58,7 +58,7 @@ func initNVP() (err error) {
 		return
 	}
 
-  if err = readAssets(); err != nil {
+	if err = readAssets(); err != nil {
 		appLogger.Debugf("Failed reading assets [%s]", err)
 		return
 	}
@@ -97,7 +97,7 @@ func initCryptoClients() error {
 	if err := crypto.RegisterClient("diego", nil, "diego", "DRJ23pEQl16a"); err != nil {
 		return err
 	}
-  var err error
+	var err error
 	charlie, err = crypto.InitClient("diego", nil)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func initCryptoClients() error {
 		return err
 	}
 
-  charlieCert, err = charlie.GetEnrollmentCertificateHandler()
+	charlieCert, err = charlie.GetEnrollmentCertificateHandler()
 	if err != nil {
 		appLogger.Errorf("Failed getting Charlie ECert [%s]", err)
 		return err
@@ -139,18 +139,18 @@ func initCryptoClients() error {
 		return err
 	}
 
-  clients = map[string]crypto.Client {"charlie": charlie, "dave": dave, "edwina": edwina}
-  certs = map[string]crypto.CertificateHandler {"charlie": charlieCert, "dave": daveCert, "edwina": edwinaCert}
+	clients = map[string]crypto.Client{"charlie": charlie, "dave": dave, "edwina": edwina}
+	certs = map[string]crypto.CertificateHandler{"charlie": charlieCert, "dave": daveCert, "edwina": edwinaCert}
 
-  myClient = clients[user]
-  myCert = certs[user]
+	myClient = clients[user]
+	myCert = certs[user]
 
 	return nil
 }
 
 func readAssets() error {
 	assets = make(map[string]string)
-  lotNums = make([]string, 0, 47)
+	lotNums = make([]string, 0, 47)
 
 	file, err := os.Open("assets.txt")
 	if err != nil {
@@ -167,7 +167,7 @@ func readAssets() error {
 		assetName := assetParts[1]
 
 		assets[lotNum] = assetName
-    lotNums = append(lotNums, lotNum)
+		lotNums = append(lotNums, lotNum)
 	}
 
 	if err := scanner.Err(); err != nil {
