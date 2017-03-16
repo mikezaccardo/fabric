@@ -64,19 +64,19 @@ var (
 
 func transferOwnership(lotNum string, newOwner string) (message string, err error) {
 	if !isAssetKnown(lotNum) {
-		message = fmt.Sprintf("Error -- asset '%s' does not exist.", lotNum)
+		message = "Asset not found"
 		appLogger.Errorf("Error -- asset '%s' does not exist.", lotNum)
 		return message, nil
 	}
 
 	if !isUserKnown(user) {
-		message = fmt.Sprintf("Error -- user '%s' is not known.", user)
+		message = "Owner not found"
 		appLogger.Errorf("Error -- user '%s' is not known.", user)
 		return message, nil
 	}
 
 	if !isUserKnown(newOwner) {
-		message = fmt.Sprintf("Error -- user '%s' is not known.", newOwner)
+		message = "Recipient not found"
 		appLogger.Errorf("Error -- user '%s' is not known.", newOwner)
 		return message, nil
 	}
@@ -86,7 +86,7 @@ func transferOwnership(lotNum string, newOwner string) (message string, err erro
 	appLogger.Debugf("------------- '%s' wants to transfer the ownership of '%s: %s' to '%s'...", user, lotNum, assetName, newOwner)
 
 	if !isOwner(assetName, user) {
-		message = fmt.Sprintf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
+		message = "Owner does not own asset"
 		appLogger.Debugf("'%s' is not the owner of '%s: %s' -- transfer not allowed.", user, lotNum, assetName)
 		return message, nil
 	}
@@ -99,7 +99,7 @@ func transferOwnership(lotNum string, newOwner string) (message string, err erro
 	}
 	appLogger.Debugf("Resp [%s]", resp.String())
 
-	message = fmt.Sprintf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
+	message = "Asset successfully transferred"
 	appLogger.Debugf("'%s' is the new owner of '%s: %s'!", newOwner, lotNum, assetName)
 	appLogger.Debug("------------- Done!")
 	return message, nil
@@ -116,12 +116,6 @@ func listOwnedAssets() {
 }
 
 func getOwnedAssets(user string) (ownedAssets []string) {
-	if !isUserKnown(user) {
-		ownedAssets = make([]string, 0, 1)
-		ownedAssets = append(ownedAssets, "Unknown user")
-		return ownedAssets
-	}
-
 	ownedAssets = make([]string, 0, len(assets))
 
 	for _, lotNum := range lotNums {
@@ -188,8 +182,15 @@ func serve() {
 }
 
 func list(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	vars := mux.Vars(r)
 	owner := vars["owner"]
+
+	if !isUserKnown(owner) {
+		http.Error(w, "Owner not found", 404)
+		return
+	}
 
 	user = owner
 	myClient = clients[owner]
@@ -200,6 +201,8 @@ func list(w http.ResponseWriter, r *http.Request) {
 }
 
 func transfer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	asset := r.FormValue("asset")
 	owner := r.FormValue("owner")
 	recipient := r.FormValue("recipient")
@@ -209,7 +212,18 @@ func transfer(w http.ResponseWriter, r *http.Request) {
 	myCert = certs[owner]
 
 	message, _ := transferOwnership(asset, recipient)
-	fmt.Fprintln(w, message)
+
+	if message != "Asset successfully transferred" {
+		if message == "Asset not found" || message == "Owner not found" || message == "Recipient not found" {
+			http.Error(w, message, 404)
+		} else if message == "Owner does not own asset" {
+			http.Error(w, message, 403)
+		} else {
+			http.Error(w, message, 500)
+		}
+	} else {
+		fmt.Fprintln(w, message)
+	}
 }
 
 func main() {

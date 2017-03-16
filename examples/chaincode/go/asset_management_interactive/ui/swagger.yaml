@@ -1,0 +1,65 @@
+swagger: "2.0"
+
+info:
+ version: "1.0.0"
+ title: "Interactive Asset Management Demo"
+ description: "API for listing asset ownership and transferring assets between owners"
+
+host: "localhost:8080"
+
+paths:
+ /list/{owner}:
+   get:
+     description: "Lists the assets owned by an owner"
+     produces:
+       - "application/json"
+     parameters:
+       -
+         name: "owner"
+         in: "path"
+         description: "The name of the owner"
+         required: true
+         type: "string"
+     responses:
+       200:
+         description: "Success"
+       404:
+         description: "Owner not found"
+       default:
+         description: "Unexpected error"
+
+ /transfer:
+   post:
+     description: "Transfers an asset between owners"
+     consumes:
+       - "application/x-www-form-urlencoded"
+     parameters:
+       -
+         name: "asset"
+         in: "formData"
+         description: "The name of the asset to be transferred"
+         required: true
+         type: "string"
+       -
+         name: "owner"
+         in: "formData"
+         description: "The current owner of the asset"
+         required: true
+         type: "string"
+       -
+         name: "recipient"
+         in: "formData"
+         description: "The new owner of the asset"
+         required: true
+         type: "string"
+     responses:
+       200:
+         description: "Asset successfully transferred"
+       403:
+         description: "Owner does not own asset"
+       404:
+         description: "Owner, recipient, or asset not found"
+       500:
+         description: "Asset transfer failed"
+       default:
+         description: "Unexpected error"
