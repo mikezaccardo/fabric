@@ -57,19 +57,19 @@ In order to run the Interactive Asset Management App, the following steps are re
 
 ### Setup the fabric network and create app's configuration file
 
-Follow the [create](https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/asset_management/app/README.md#create-apps-configuration-file) and [setup](https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/asset_management/app/README.md#setup-the-fabric-network) steps from the original asset management demo instructions. Note that the `core.yaml` that is described should be placed in this directory on the CLI node.
+Deploy HLF with Cloudsoft AMP which will automatically configure the network properly for this demo.
 
 ### Build the apps
 
-Follow the first two instructions of the [run step](https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/asset_management/app/README.md#run-the-app) from the original asset management demo instructions, but change into the following directory instead:
+SSH into the CLI node of your HLF cluster and run the following commands:
 
 ```
-cd $GOPATH/src/github.com/hyperldger/fabric/examples/chaincode/go/asset_management_interactive
-```
+cd $APP_HOME
 
-Then build all three applications by issuing the following command:
+sudo yum -y install wget
+wget https://raw.githubusercontent.com/mikezaccardo/fabric/interconnect-demo/examples/chaincode/go/asset_management_interactive/build.sh
+chmod +x build.sh
 
-```
 ./build.sh
 ```
 
@@ -93,7 +93,38 @@ cd ../app2
 ./app2 8bc69f84aa55195b9eba6aed6261a01ba528acd3413f37b34df580f96e0d8a525e0fe8d41f967b38f192f7a731d63596eedcbd08ee636afdadb96be02d5d150d
 ```
 
-### Run `app3` for each owner
+### Run `app3` as a server
+
+Run `app3` by issuing the following command:
+
+```
+cd ../app3
+./app3 8bc69f84aa55195b9eba6aed6261a01ba528acd3413f37b34df580f96e0d8a525e0fe8d41f967b38f192f7a731d63596eedcbd08ee636afdadb96be02d5d150d serve
+```
+
+This creates a simple REST server that exposes endpoints to list assets of each owner as well as to transfer assets between owners.
+
+### Interact with the server using Swagger UI
+
+Go to the [Swagger Editor](http://editor2.swagger.io/#!/) in your browser and paste in the contents of [swagger.yaml](ui/swagger.yaml). Change the following line:
+
+```
+host: "localhost:8080"
+```
+
+to:
+
+```
+host: "<IP-of-CLI-node>:8080"
+```
+
+To list the assets of each owner, invoke `/list/{owner}` with the name of the owner (`charlie`, `dave`, or `edwina`).
+
+To transfer an asset between owners, invoke `/transfer` with the asset name (in the form `LotXX`), the owner, and the recipient. Be sure to supply `Content-Type` with `application/x-www-formurlencoded`.
+
+### Alternative: Run `app3` for each owner
+
+Rather than run the REST server + Swagger UI, a CLI can also be used to list and transfer assets.
 
 Run `app3` for each owner by issuing the following commands (note that a separate terminal window for each owner is recommended):
 
@@ -119,7 +150,7 @@ Run as *Edwina*:
 ./app3 8bc69f84aa55195b9eba6aed6261a01ba528acd3413f37b34df580f96e0d8a525e0fe8d41f967b38f192f7a731d63596eedcbd08ee636afdadb96be02d5d150d edwina
 ```
 
-Each app will then provide a simple console interface for perfoming one of two actions: listing owned assets and transferring an asset to another owner.
+Each app will then provide a simple console interface for performing one of two actions: listing owned assets and transferring an asset to another owner.
 
 #### List Assets
 
